@@ -20,21 +20,22 @@ import {
   Badge,
   Tooltip,
   Fade,
+  Collapse,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
-  Dashboard as DashboardIcon,
-  People as PeopleIcon,
-  Settings as SettingsIcon,
   Notifications as NotificationsIcon,
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useMenu } from '../../hooks/useMenu';
+import { MenuItemWithIcon } from '../../types/menu';
 
 const drawerWidth = 280;
 
@@ -173,11 +174,47 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Users', icon: <PeopleIcon />, path: '/users' },
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
-];
+const MenuItemComponent = ({ item, level = 0 }: { item: MenuItemWithIcon; level?: number }) => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const isSelected = window.location.pathname === item.path;
+
+  const handleClick = () => {
+    if (item.children && item.children.length > 0) {
+      setOpen(!open);
+    } else {
+      navigate(item.path);
+    }
+  };
+
+  return (
+    <>
+      <StyledListItemButton
+        onClick={handleClick}
+        selected={isSelected}
+        sx={{ pl: level * 2 + 2 }}
+      >
+        <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+          {item.icon}
+        </ListItemIcon>
+        <ListItemText primary={item.title} />
+        {item.children && item.children.length > 0 && (
+          open ? <ExpandLessIcon /> : <ExpandMoreIcon />
+        )}
+      </StyledListItemButton>
+      {item.children && item.children.length > 0 && (
+        <Collapse in={open} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {item.children.map((child) => (
+              <MenuItemComponent key={child.id} item={child} level={level + 1} />
+            ))}
+          </List>
+        </Collapse>
+      )}
+    </>
+  );
+};
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
@@ -186,16 +223,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { menuItems, loading, error } = useMenu();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
-  };
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    if (isMobile) {
-      setOpen(false);
-    }
   };
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -309,16 +340,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </DrawerHeader>
         <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
         <List>
-          {menuItems.map((item) => (
-            <StyledListItemButton 
-              key={item.text}
-              onClick={() => handleNavigation(item.path)}
-              selected={window.location.pathname === item.path}
-            >
-              <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </StyledListItemButton>
-          ))}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Typography color="error" sx={{ p: 2 }}>
+              {error}
+            </Typography>
+          ) : (
+            menuItems.map((item) => (
+              <MenuItemComponent key={item.id} item={item} />
+            ))
+          )}
         </List>
       </StyledDrawer>
       <Main open={open}>
