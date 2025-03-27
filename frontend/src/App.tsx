@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import Documents from './pages/Documents';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -58,7 +59,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
-function App() {
+const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -82,11 +83,19 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/leads/documents"
+              element={
+                <ProtectedRoute>
+                  <Documents />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Router>
       </AuthProvider>
     </ThemeProvider>
   );
-}
+};
 
 export default App; 

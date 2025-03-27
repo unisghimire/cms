@@ -31,6 +31,9 @@ import {
   Logout as LogoutIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
+  Dashboard as DashboardIcon,
+  Person as PersonIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -215,6 +218,13 @@ const MenuItemComponent = ({ item, level = 0 }: { item: MenuItemWithIcon; level?
     </>
   );
 };
+
+const menuItems = [
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Leads', icon: <PersonIcon />, path: '/leads' },
+  { text: 'Documents', icon: <DescriptionIcon />, path: '/leads/documents' },
+  // ... other menu items ...
+];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();

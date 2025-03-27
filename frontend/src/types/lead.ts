@@ -55,6 +55,15 @@ export enum EducationLevel {
   Other = 'other'
 }
 
+// Enum for activity types
+export enum ActivityType {
+  Call = 'Call',
+  Email = 'Email',
+  Meeting = 'Meeting',
+  Document = 'Document Submission',
+  Other = 'Other'
+}
+
 // Interface for lead information
 export interface Lead {
   // Unique identifier
@@ -238,6 +247,23 @@ export interface LeadWithDetails extends Lead {
   documents: Document[];
   activities: LeadActivity[];
   visa_applications: VisaApplication[];
+}
+
+// Interface for activity information
+export interface Activity {
+  id: string;
+  lead_id: string;
+  activity_type: ActivityType;
+  description: string;
+  meeting_date?: string;
+  meeting_duration?: string;
+  meeting_notes?: string;
+  follow_up_date?: string;
+  follow_up_notes?: string;
+  documents_collected?: string[];
+  documents_pending?: string[];
+  performed_by: string;
+  created_at: string;
 }
 
 // Make the file a module
