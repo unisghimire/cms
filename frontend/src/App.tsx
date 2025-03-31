@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Documents from './pages/Documents';
+import Applications from './pages/Applications';
+import Followups from './pages/Followups';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -76,6 +78,14 @@ const App: React.FC = () => {
               }
             />
             <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/leads/all"
               element={
                 <ProtectedRoute>
@@ -88,6 +98,22 @@ const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Documents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/applications"
+              element={
+                <ProtectedRoute>
+                  <Applications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/followups"
+              element={
+                <ProtectedRoute>
+                  <Followups />
                 </ProtectedRoute>
               }
             />

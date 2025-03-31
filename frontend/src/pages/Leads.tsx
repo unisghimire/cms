@@ -31,6 +31,14 @@ import {
   Badge,
   Avatar,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -54,6 +62,10 @@ import {
   Cancel as CancelIcon,
   Description as DescriptionIcon,
   MoreHoriz as MoreHorizIcon,
+  ViewModule as CardViewIcon,
+  TableChart as TableViewIcon,
+  SearchOff as SearchOffIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { Lead, LeadStatus, VisaType, TargetCountry, EducationLevel, LeadSource, ActivityType } from '../types/lead';
@@ -137,7 +149,7 @@ const IconWrapper = styled(Box)(({ theme }) => ({
 const SearchPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(3),
-  background: alpha(theme.palette.background.paper, 0.8),
+  background: alpha(theme.palette.background.paper, 0.95),
   backdropFilter: 'blur(10px)',
   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
   borderRadius: '16px',
@@ -320,6 +332,13 @@ const Leads: React.FC = () => {
     documents_pending: [] as string[],
   });
   const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [tableFilters, setTableFilters] = useState({
+    visaType: '',
+    targetCountry: '',
+    status: '',
+    source: '',
+  });
 
   // Initial data fetch
   useEffect(() => {
@@ -556,6 +575,311 @@ const Leads: React.FC = () => {
     }
   }, [selectedLead, fetchActivities]);
 
+  const handleFilterChange = (field: string, value: string) => {
+    setTableFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setTableFilters({
+      visaType: '',
+      targetCountry: '',
+      status: '',
+      source: '',
+    });
+  };
+
+  const filteredLeads = leads.filter(lead => {
+    if (tableFilters.visaType && lead.visa_type !== tableFilters.visaType) return false;
+    if (tableFilters.targetCountry && lead.target_country !== tableFilters.targetCountry) return false;
+    if (tableFilters.status && lead.status !== tableFilters.status) return false;
+    if (tableFilters.source && lead.source !== tableFilters.source) return false;
+    return true;
+  });
+
+  const renderTableView = () => (
+    <Box>
+      {/* Filter Section */}
+      <Paper sx={{ 
+        p: 2, 
+        mb: 3,
+        borderRadius: '16px',
+        background: alpha(theme.palette.background.paper, 0.95),
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        position: 'relative',
+        zIndex: 1200,
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          mb: 2,
+          gap: 1,
+          position: 'relative',
+          zIndex: 1200,
+        }}>
+          <FilterIcon color="primary" />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Filters
+          </Typography>
+        </Box>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl size="small" fullWidth sx={{ position: 'relative', zIndex: 1200 }}>
+              <InputLabel>Visa Type</InputLabel>
+              <Select
+                value={tableFilters.visaType}
+                label="Visa Type"
+                onChange={(e) => handleFilterChange('visaType', e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                  },
+                  position: 'relative',
+                  zIndex: 1200,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <MuiMenuItem value="">All Visa Types</MuiMenuItem>
+                {Object.values(VisaType).map((type) => (
+                  <MuiMenuItem key={type} value={type}>
+                    {type}
+                  </MuiMenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl size="small" fullWidth sx={{ position: 'relative', zIndex: 1200 }}>
+              <InputLabel>Target Country</InputLabel>
+              <Select
+                value={tableFilters.targetCountry}
+                label="Target Country"
+                onChange={(e) => handleFilterChange('targetCountry', e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                  },
+                  position: 'relative',
+                  zIndex: 1200,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <MuiMenuItem value="">All Countries</MuiMenuItem>
+                {Object.values(TargetCountry).map((country) => (
+                  <MuiMenuItem key={country} value={country}>
+                    {country}
+                  </MuiMenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl size="small" fullWidth sx={{ position: 'relative', zIndex: 1200 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={tableFilters.status}
+                label="Status"
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                  },
+                  position: 'relative',
+                  zIndex: 1200,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <MuiMenuItem value="">All Statuses</MuiMenuItem>
+                {Object.values(LeadStatus).map((status) => (
+                  <MuiMenuItem key={status} value={status}>
+                    {status}
+                  </MuiMenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl size="small" fullWidth sx={{ position: 'relative', zIndex: 1200 }}>
+              <InputLabel>Source</InputLabel>
+              <Select
+                value={tableFilters.source}
+                label="Source"
+                onChange={(e) => handleFilterChange('source', e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                  },
+                  position: 'relative',
+                  zIndex: 1200,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <MuiMenuItem value="">All Sources</MuiMenuItem>
+                {Object.values(LeadSource).map((source) => (
+                  <MuiMenuItem key={source} value={source}>
+                    {source}
+                  </MuiMenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+        {(tableFilters.visaType || tableFilters.targetCountry || tableFilters.status || tableFilters.source) && (
+          <Box sx={{ 
+            mt: 2, 
+            display: 'flex', 
+            justifyContent: 'flex-end',
+            position: 'relative',
+            zIndex: 1200,
+          }}>
+            <Button
+              startIcon={<ClearIcon />}
+              onClick={handleClearFilters}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': {
+                  color: 'error.main',
+                },
+                position: 'relative',
+                zIndex: 1200,
+                pointerEvents: 'auto',
+              }}
+            >
+              Clear Filters
+            </Button>
+          </Box>
+        )}
+      </Paper>
+
+      {/* Table */}
+      <TableContainer component={Paper} sx={{ 
+        borderRadius: '16px',
+        background: alpha(theme.palette.background.paper, 0.95),
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+      }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Lead</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Contact</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Visa Type</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Target Country</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Source</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredLeads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <SearchOffIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+                    <Typography variant="body1" color="text.secondary">
+                      No leads found matching your filters
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredLeads.map((lead) => (
+                <TableRow 
+                  key={lead.id}
+                  hover
+                  sx={{ 
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                    }
+                  }}
+                >
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <IconWrapper>
+                        {getVisaTypeIcon(lead.visa_type)}
+                      </IconWrapper>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {lead.first_name} {lead.last_name}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{lead.email}</Typography>
+                      <Typography variant="body2" color="text.secondary">{lead.phone}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{lead.visa_type}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{lead.target_country}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <StatusChip
+                      label={lead.status}
+                      color={getStatusColor(lead.status)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{lead.source}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Box sx={{ 
+                      position: 'relative', 
+                      zIndex: 1200,
+                      display: 'flex',
+                      justifyContent: 'flex-end'
+                    }}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleLeadMenuClick(e, lead)}
+                        sx={{ 
+                          bgcolor: 'background.paper',
+                          '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.1)
+                          },
+                          cursor: 'pointer',
+                          pointerEvents: 'auto',
+                          position: 'relative',
+                          zIndex: 1200,
+                          '& .MuiSvgIcon-root': {
+                            fontSize: '1.5rem'
+                          }
+                        }}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+
   return (
     <Layout>
       <Box sx={{ p: 3 }}>
@@ -589,21 +913,79 @@ const Leads: React.FC = () => {
             >
               Leads Management
             </Typography>
-            <ActionButton
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddLeadClick}
-              sx={{ 
-                position: 'relative', 
-                zIndex: 1,
-                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
-                }
-              }}
-            >
-              Add New Lead
-            </ActionButton>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              alignItems: 'center',
+              position: 'relative',
+              zIndex: 1200,
+            }}>
+              <Box sx={{ position: 'relative', zIndex: 1200 }}>
+                <ToggleButtonGroup
+                  value={viewMode}
+                  exclusive
+                  onChange={(e, newValue) => {
+                    if (newValue !== null) {
+                      setViewMode(newValue);
+                    }
+                  }}
+                  size="small"
+                  sx={{
+                    '& .MuiToggleButton-root': {
+                      px: 2,
+                      py: 1,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                      '&.Mui-selected': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                        },
+                      },
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.action.hover, 0.1),
+                      },
+                      '&:not(.Mui-selected)': {
+                        color: theme.palette.text.secondary,
+                      },
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                    },
+                    '& .MuiToggleButtonGroup-grouped': {
+                      '&:not(:first-of-type)': {
+                        borderLeft: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                      },
+                    },
+                  }}
+                >
+                  <ToggleButton value="card" aria-label="card view">
+                    <CardViewIcon />
+                  </ToggleButton>
+                  <ToggleButton value="table" aria-label="table view">
+                    <TableViewIcon />
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{ position: 'relative', zIndex: 1200 }}>
+                <ActionButton
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddLeadClick}
+                  sx={{ 
+                    position: 'relative', 
+                    zIndex: 1200,
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
+                    },
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  Add New Lead
+                </ActionButton>
+              </Box>
+            </Box>
           </Box>
         </Fade>
 
@@ -611,7 +993,7 @@ const Leads: React.FC = () => {
         <Fade in timeout={500} style={{ transitionDelay: '100ms' }}>
           <SearchPaper>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12}>
                 <TextField
                   fullWidth
                   placeholder="Search leads..."
@@ -623,30 +1005,42 @@ const Leads: React.FC = () => {
                     zIndex: 6,
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '12px',
-                      backgroundColor: alpha('#fff', 0.8),
-                      '&:hover': {
-                        backgroundColor: alpha('#fff', 0.9),
-                      }
-                    }
+                      backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                      '& fieldset': {
+                        borderColor: alpha(theme.palette.divider, 0.2),
+                      },
+                      '&:hover fieldset': {
+                        borderColor: alpha(theme.palette.primary.main, 0.3),
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.primary.main,
+                      },
+                      '& input': {
+                        color: theme.palette.text.primary,
+                        '&::placeholder': {
+                          color: alpha(theme.palette.text.primary, 0.5),
+                        },
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: alpha(theme.palette.text.primary, 0.7),
+                      '&.Mui-focused': {
+                        color: theme.palette.primary.main,
+                      },
+                    },
                   }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        {isSearching ? <CircularProgress size={20} /> : <SearchIcon />}
+                        {isSearching ? (
+                          <CircularProgress size={20} sx={{ color: theme.palette.primary.main }} />
+                        ) : (
+                          <SearchIcon sx={{ color: alpha(theme.palette.text.primary, 0.5) }} />
+                        )}
                       </InputAdornment>
                     ),
                   }}
                 />
-              </Grid>
-              <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <ActionButton
-                  variant="outlined"
-                  startIcon={<FilterIcon />}
-                  onClick={handleFilterClick}
-                  sx={{ position: 'relative', zIndex: 2 }}
-                >
-                  Filters
-                </ActionButton>
               </Grid>
             </Grid>
           </SearchPaper>
@@ -667,85 +1061,90 @@ const Leads: React.FC = () => {
             <CircularProgress />
           </Box>
         ) : (
-          /* Leads Grid */
-          <Grid container spacing={3}>
-            {leads.map((lead: Lead, index: number) => (
-              <Grid item xs={12} sm={6} md={4} key={lead.id}>
-                <Fade in timeout={500} style={{ transitionDelay: `${index * 100}ms` }}>
-                  <Box sx={{ position: 'relative', zIndex: 1 }}>
-                    <StyledCard>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                          <IconWrapper>
-                            {getVisaTypeIcon(lead.visa_type)}
-                          </IconWrapper>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-                              {lead.first_name} {lead.last_name}
-                            </Typography>
-                            <LeadInfoItem>
-                              <EmailIcon />
-                              <Typography variant="body2">{lead.email}</Typography>
-                            </LeadInfoItem>
-                          </Box>
-                          <Box 
-                            sx={{ 
-                              position: 'absolute',
-                              top: 8,
-                              right: 8,
-                              zIndex: 20
-                            }}
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleLeadMenuClick(e, lead)}
+          viewMode === 'card' ? (
+            /* Leads Grid */
+            <Grid container spacing={3}>
+              {leads.map((lead: Lead, index: number) => (
+                <Grid item xs={12} sm={6} md={4} key={lead.id}>
+                  <Fade in timeout={500} style={{ transitionDelay: `${index * 100}ms` }}>
+                    <Box sx={{ position: 'relative', zIndex: 1 }}>
+                      <StyledCard>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                            <IconWrapper>
+                              {getVisaTypeIcon(lead.visa_type)}
+                            </IconWrapper>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                                {lead.first_name} {lead.last_name}
+                              </Typography>
+                              <LeadInfoItem>
+                                <EmailIcon />
+                                <Typography variant="body2">{lead.email}</Typography>
+                              </LeadInfoItem>
+                            </Box>
+                            <Box 
                               sx={{ 
-                                bgcolor: 'background.paper',
-                                '&:hover': {
-                                  bgcolor: alpha(theme.palette.primary.main, 0.1)
-                                }
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                zIndex: 20
                               }}
                             >
-                              <MoreVertIcon />
-                            </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleLeadMenuClick(e, lead)}
+                                sx={{ 
+                                  bgcolor: 'background.paper',
+                                  '&:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.1)
+                                  }
+                                }}
+                              >
+                                <MoreVertIcon />
+                              </IconButton>
+                            </Box>
                           </Box>
-                        </Box>
 
-                        <Box sx={{ mb: 2 }}>
-                          <StatusChip
-                            label={lead.status}
-                            color={getStatusColor(lead.status)}
-                            size="small"
-                          />
-                        </Box>
+                          <Box sx={{ mb: 2 }}>
+                            <StatusChip
+                              label={lead.status}
+                              color={getStatusColor(lead.status)}
+                              size="small"
+                            />
+                          </Box>
 
-                        <Divider sx={{ my: 2 }} />
+                          <Divider sx={{ my: 2 }} />
 
-                        <LeadInfoItem>
-                          <FlightIcon />
-                          <Typography variant="body2">
-                            <strong>Visa Type:</strong> {lead.visa_type}
-                          </Typography>
-                        </LeadInfoItem>
-                        <LeadInfoItem>
-                          <LocationIcon />
-                          <Typography variant="body2">
-                            <strong>Target Country:</strong> {lead.target_country}
-                          </Typography>
-                        </LeadInfoItem>
-                        <LeadInfoItem>
-                          <PersonIcon />
-                          <Typography variant="body2">
-                            <strong>Source:</strong> {lead.source}
-                          </Typography>
-                        </LeadInfoItem>
-                      </CardContent>
-                    </StyledCard>
-                  </Box>
-                </Fade>
-              </Grid>
-            ))}
-          </Grid>
+                          <LeadInfoItem>
+                            <FlightIcon />
+                            <Typography variant="body2">
+                              <strong>Visa Type:</strong> {lead.visa_type}
+                            </Typography>
+                          </LeadInfoItem>
+                          <LeadInfoItem>
+                            <LocationIcon />
+                            <Typography variant="body2">
+                              <strong>Target Country:</strong> {lead.target_country}
+                            </Typography>
+                          </LeadInfoItem>
+                          <LeadInfoItem>
+                            <PersonIcon />
+                            <Typography variant="body2">
+                              <strong>Source:</strong> {lead.source}
+                            </Typography>
+                          </LeadInfoItem>
+                        </CardContent>
+                      </StyledCard>
+                    </Box>
+                  </Fade>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            /* Table View */
+            renderTableView()
+          )
         )}
 
         {/* Lead Actions Menu */}
@@ -769,7 +1168,9 @@ const Leads: React.FC = () => {
               sx: {
                 borderRadius: '12px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                mt: 1
+                mt: 1,
+                minWidth: '200px',
+                zIndex: 2000
               }
             }
           }}

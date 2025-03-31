@@ -19,6 +19,14 @@ import {
   alpha,
   Tooltip,
   LinearProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
@@ -28,6 +36,9 @@ import {
   Visibility as ViewIcon,
   Add as AddIcon,
   VerifiedUser as VerifiedIcon,
+  ViewModule as CardViewIcon,
+  TableChart as TableViewIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { Layout } from '../components/layout/Layout';
@@ -99,6 +110,10 @@ const Documents: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+  const [documentToVerify, setDocumentToVerify] = useState<Document | null>(null);
+  const [verificationNotes, setVerificationNotes] = useState('');
 
   useEffect(() => {
     fetchDocuments();
@@ -324,6 +339,43 @@ const Documents: React.FC = () => {
     }
   };
 
+  const handleVerify = async (document: Document) => {
+    setDocumentToVerify(document);
+    setIsVerifyDialogOpen(true);
+  };
+
+  const handleVerifySubmit = async () => {
+    if (!documentToVerify) return;
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('You must be authenticated to verify documents');
+      }
+
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          is_verified: true,
+          verified_by: user.id,
+          verified_at: new Date().toISOString(),
+          notes: verificationNotes || documentToVerify.notes
+        })
+        .eq('id', documentToVerify.id);
+
+      if (error) throw error;
+
+      setIsVerifyDialogOpen(false);
+      setDocumentToVerify(null);
+      setVerificationNotes('');
+      fetchDocuments();
+    } catch (err: any) {
+      console.error('Error verifying document:', err);
+      setError(err.message || 'Failed to verify document');
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -331,6 +383,148 @@ const Documents: React.FC = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  const renderTableView = () => (
+    <TableContainer component={Paper} sx={{ 
+      borderRadius: '16px',
+      background: alpha(theme.palette.background.paper, 0.95),
+      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+    }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 600 }}>Document Name</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Lead</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Size</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Upload Date</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {documents.map((document) => (
+            <TableRow 
+              key={document.id}
+              hover
+              sx={{ 
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                }
+              }}
+            >
+              <TableCell>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {document.document_name}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2">
+                  {document.leads ? 
+                    `${document.leads.first_name} ${document.leads.last_name}` : 
+                    'Unknown Lead'}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Chip 
+                  label={document.document_type}
+                  size="small"
+                  sx={{ 
+                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                  }}
+                />
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2">
+                  {formatFileSize(document.document_size)}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip 
+                    icon={document.is_verified ? <VerifiedIcon /> : undefined}
+                    label={document.is_verified ? "Verified" : "Not Verified"}
+                    size="small"
+                    color={document.is_verified ? "success" : "default"}
+                  />
+                  {!document.is_verified && (
+                    <Tooltip title="Verify Document">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleVerify(document)}
+                        sx={{
+                          color: theme.palette.success.main,
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.success.main, 0.1),
+                          }
+                        }}
+                      >
+                        <CheckCircleIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2">
+                  {new Date(document.created_at).toLocaleDateString()}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ 
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 1
+                }}>
+                  <Tooltip title="View">
+                    <IconButton 
+                      size="small"
+                      onClick={() => handleView(document)}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        }
+                      }}
+                    >
+                      <ViewIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Download">
+                    <IconButton 
+                      size="small"
+                      onClick={() => handleDownload(document)}
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        }
+                      }}
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small"
+                      onClick={() => handleDelete(document)}
+                      sx={{ 
+                        color: theme.palette.error.main,
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.error.main, 0.1),
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
 
   return (
     <Layout>
@@ -367,12 +561,57 @@ const Documents: React.FC = () => {
           >
             Lead Documents
           </Typography>
-          <Box 
-            sx={{ 
-              position: 'relative',
-              zIndex: 1200
-            }}
-          >
+          <Box sx={{ 
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1200
+          }}>
+            <Box sx={{ position: 'relative', zIndex: 1200 }}>
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={(e, newValue) => {
+                  if (newValue !== null) {
+                    setViewMode(newValue);
+                  }
+                }}
+                size="small"
+                sx={{
+                  '& .MuiToggleButton-root': {
+                    px: 2,
+                    py: 1,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    '&.Mui-selected': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      color: theme.palette.primary.main,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                      },
+                    },
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.action.hover, 0.1),
+                    },
+                    '&:not(.Mui-selected)': {
+                      color: theme.palette.text.secondary,
+                    },
+                  },
+                  '& .MuiToggleButtonGroup-grouped': {
+                    '&:not(:first-of-type)': {
+                      borderLeft: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="card" aria-label="card view">
+                  <CardViewIcon />
+                </ToggleButton>
+                <ToggleButton value="table" aria-label="table view">
+                  <TableViewIcon />
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
             <Button
               variant="contained"
               color="primary"
@@ -456,7 +695,7 @@ const Documents: React.FC = () => {
                 Click the Upload Document button to add your first document
               </Typography>
             </Box>
-          ) : (
+          ) : viewMode === 'card' ? (
             <Grid container spacing={3}>
               {documents.map((document) => (
                 <Grid item xs={12} sm={6} md={4} key={document.id}>
@@ -526,14 +765,30 @@ const Documents: React.FC = () => {
                                 color: theme.palette.primary.main,
                               }} 
                             />
-                            {document.is_verified && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Chip 
-                                icon={<VerifiedIcon />}
-                                label="Verified"
+                                icon={document.is_verified ? <VerifiedIcon /> : undefined}
+                                label={document.is_verified ? "Verified" : "Not Verified"}
                                 size="small"
-                                color="success"
+                                color={document.is_verified ? "success" : "default"}
                               />
-                            )}
+                              {!document.is_verified && (
+                                <Tooltip title="Verify Document">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleVerify(document)}
+                                    sx={{
+                                      color: theme.palette.success.main,
+                                      '&:hover': {
+                                        backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                      }
+                                    }}
+                                  >
+                                    <CheckCircleIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
                           </Stack>
                         </Box>
                       </Box>
@@ -661,6 +916,8 @@ const Documents: React.FC = () => {
                 </Grid>
               ))}
             </Grid>
+          ) : (
+            renderTableView()
           )}
         </Box>
 
@@ -959,6 +1216,66 @@ const Documents: React.FC = () => {
               </Box>
             )}
           </DialogContent>
+        </Dialog>
+
+        {/* Verification Dialog */}
+        <Dialog
+          open={isVerifyDialogOpen}
+          onClose={() => setIsVerifyDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          sx={{
+            '& .MuiDialog-paper': {
+              backgroundColor: theme.palette.background.paper,
+              backgroundImage: 'none'
+            }
+          }}
+        >
+          <DialogTitle>Verify Document</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" gutterBottom>
+                Are you sure you want to verify this document?
+              </Typography>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Document Details:
+              </Typography>
+              <Stack spacing={1} sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  Name: {documentToVerify?.document_name}
+                </Typography>
+                <Typography variant="body2">
+                  Type: {documentToVerify?.document_type}
+                </Typography>
+                <Typography variant="body2">
+                  Lead: {documentToVerify?.leads ? 
+                    `${documentToVerify.leads.first_name} ${documentToVerify.leads.last_name}` : 
+                    'Unknown Lead'}
+                </Typography>
+              </Stack>
+              <TextField
+                fullWidth
+                label="Verification Notes (Optional)"
+                value={verificationNotes}
+                onChange={(e) => setVerificationNotes(e.target.value)}
+                multiline
+                rows={3}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setIsVerifyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleVerifySubmit}
+            >
+              Verify Document
+            </Button>
+          </DialogActions>
         </Dialog>
       </Box>
     </Layout>
