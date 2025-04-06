@@ -8,7 +8,10 @@ import Leads from './pages/Leads';
 import Documents from './pages/Documents';
 import Applications from './pages/Applications';
 import Followups from './pages/Followups';
+import LeadTransfer from './pages/LeadTransfer';
+import Invoice from './pages/Invoice';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import InvoiceFormat from './components/InvoiceFormat';
 
 const theme = createTheme({
   palette: {
@@ -114,6 +117,54 @@ const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Followups />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/transfer"
+              element={
+                <ProtectedRoute>
+                  <LeadTransfer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/invoice"
+              element={
+                <ProtectedRoute>
+                  <Invoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads/invoice/:id"
+              element={
+                <ProtectedRoute>
+                  <Invoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <Invoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id"
+              element={
+                <ProtectedRoute>
+                  <Invoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <Invoice />
                 </ProtectedRoute>
               }
             />

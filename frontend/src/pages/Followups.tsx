@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -30,6 +30,7 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,6 +43,8 @@ import {
   Pending as PendingIcon,
   ViewModule as CardViewIcon,
   TableChart as TableViewIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { Layout } from '../components/layout/Layout';
@@ -94,6 +97,8 @@ const Followups: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFollowup, setSelectedFollowup] = useState<Followup | null>(null);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
   const [formData, setFormData] = useState({
     lead_id: '',
     activity_type: '',
@@ -130,6 +135,7 @@ const Followups: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching followups:', err);
       setError(err.message);
+      setFollowups([]);
     } finally {
       setLoading(false);
     }
@@ -237,350 +243,424 @@ const Followups: React.FC = () => {
     }
   };
 
-  const renderCardView = () => (
-    <Grid container spacing={3}>
-      {followups.map((followup) => (
-        <Grid item xs={12} sm={6} md={4} key={followup.id}>
-          <FollowupCard>
-            {/* Lead Info Section */}
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              mb: 2,
-              pb: 2,
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-            }}>
+  const filteredFollowups = useMemo(() => {
+    return followups.filter(followup => {
+      const matchesSearch = searchQuery === '' || 
+        (followup.leads?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         followup.leads?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         followup.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesFilter = filterType === 'all' || 
+        followup.activity_type.toLowerCase() === filterType.toLowerCase();
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [followups, searchQuery, filterType]);
+
+  const renderCardView = (followups: Followup[]) => {
+    if (followups.length === 0) {
+      return (
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '200px',
+          p: 4,
+          borderRadius: '16px',
+          backgroundColor: alpha(theme.palette.background.paper, 0.6),
+          border: `1px dashed ${alpha(theme.palette.divider, 0.3)}`,
+        }}>
+          <DescriptionIcon sx={{ 
+            fontSize: 64, 
+            color: alpha(theme.palette.text.secondary, 0.5),
+            mb: 2
+          }} />
+          <Typography variant="h6" sx={{ color: theme.palette.text.secondary }}>
+            No followups found
+          </Typography>
+          <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
+            Click the New Followup button to create your first followup
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Grid container spacing={3}>
+        {followups.map((followup) => (
+          <Grid item xs={12} sm={6} md={4} key={followup.id}>
+            <FollowupCard>
+              {/* Lead Info Section */}
               <Box sx={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: '50%', 
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2,
+                pb: 2,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
               }}>
-                <Typography sx={{ 
-                  color: theme.palette.primary.main,
-                  fontWeight: 'bold'
+                <Box sx={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: '50%', 
+                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 2
                 }}>
-                  {followup.leads?.first_name?.[0]}{followup.leads?.last_name?.[0]}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" sx={{ 
-                  color: theme.palette.text.primary,
-                  fontWeight: 600
-                }}>
-                  {followup.leads ? 
-                    `${followup.leads.first_name} ${followup.leads.last_name}` : 
-                    'Unknown Lead'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                  {new Date(followup.created_at).toLocaleDateString()}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Followup Info Section */}
-            <Box sx={{ flex: 1 }}>
-              <Stack spacing={2}>
-                {/* Activity Type */}
-                <Box>
-                  <Chip 
-                    label={followup.activity_type}
-                    color={getActivityTypeColor(followup.activity_type)}
-                    size="small"
-                    sx={{ mb: 1 }}
-                  />
-                </Box>
-
-                {/* Description */}
-                <Box>
-                  <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                    {followup.description}
+                  <Typography sx={{ 
+                    color: theme.palette.primary.main,
+                    fontWeight: 'bold'
+                  }}>
+                    {followup.leads?.first_name?.[0]}{followup.leads?.last_name?.[0]}
                   </Typography>
                 </Box>
-
-                {/* Meeting Details */}
-                {followup.meeting_date && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                      Meeting Details
-                    </Typography>
-                    <Stack spacing={1}>
-                      <Typography variant="body2">
-                        Date: {new Date(followup.meeting_date).toLocaleDateString()}
-                      </Typography>
-                      {followup.meeting_duration && (
-                        <Typography variant="body2">
-                          Duration: {followup.meeting_duration}
-                        </Typography>
-                      )}
-                      {followup.meeting_notes && (
-                        <Typography variant="body2">
-                          Notes: {followup.meeting_notes}
-                        </Typography>
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-
-                {/* Follow-up Details */}
-                {followup.follow_up_date && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                      Follow-up Details
-                    </Typography>
-                    <Stack spacing={1}>
-                      <Typography variant="body2">
-                        Date: {new Date(followup.follow_up_date).toLocaleDateString()}
-                      </Typography>
-                      {followup.follow_up_notes && (
-                        <Typography variant="body2">
-                          Notes: {followup.follow_up_notes}
-                        </Typography>
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-
-                {/* Document Status */}
-                {(followup.documents_collected.length > 0 || followup.documents_pending.length > 0) && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                      Document Status
-                    </Typography>
-                    <Stack spacing={1}>
-                      {followup.documents_collected.length > 0 && (
-                        <Box>
-                          <Typography variant="body2" color="success.main">
-                            Collected:
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            {followup.documents_collected.map((doc, index) => (
-                              <Chip
-                                key={index}
-                                label={doc}
-                                size="small"
-                                color="success"
-                                icon={<CheckCircleIcon />}
-                              />
-                            ))}
-                          </Stack>
-                        </Box>
-                      )}
-                      {followup.documents_pending.length > 0 && (
-                        <Box>
-                          <Typography variant="body2" color="warning.main">
-                            Pending:
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            {followup.documents_pending.map((doc, index) => (
-                              <Chip
-                                key={index}
-                                label={doc}
-                                size="small"
-                                color="warning"
-                                icon={<PendingIcon />}
-                              />
-                            ))}
-                          </Stack>
-                        </Box>
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-              </Stack>
-            </Box>
-
-            {/* Actions Section */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end', 
-              gap: 1,
-              pt: 2,
-              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-            }}>
-              <Tooltip title="Edit">
-                <IconButton 
-                  size="small"
-                  onClick={() => handleEdit(followup)}
-                  sx={{
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                    }
-                  }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton 
-                  size="small"
-                  onClick={() => handleDelete(followup)}
-                  sx={{ 
-                    color: theme.palette.error.main,
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.error.main, 0.1),
-                    }
-                  }}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </FollowupCard>
-        </Grid>
-      ))}
-    </Grid>
-  );
-
-  const renderTableView = () => (
-    <TableContainer component={Paper} sx={{ 
-      borderRadius: '16px',
-      background: alpha(theme.palette.background.paper, 0.95),
-      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-    }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Lead</TableCell>
-            <TableCell>Activity Type</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell>Meeting Date</TableCell>
-            <TableCell>Follow-up Date</TableCell>
-            <TableCell>Documents</TableCell>
-            <TableCell align="right">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {followups.map((followup) => (
-            <TableRow key={followup.id}>
-              <TableCell>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ 
-                    width: 32, 
-                    height: 32, 
-                    borderRadius: '50%', 
-                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                <Box>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: theme.palette.text.primary,
+                    fontWeight: 600
                   }}>
-                    <Typography sx={{ 
-                      color: theme.palette.primary.main,
-                      fontWeight: 'bold',
-                      fontSize: '0.875rem'
-                    }}>
-                      {followup.leads?.first_name?.[0]}{followup.leads?.last_name?.[0]}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2">
                     {followup.leads ? 
                       `${followup.leads.first_name} ${followup.leads.last_name}` : 
                       'Unknown Lead'}
                   </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                    {new Date(followup.created_at).toLocaleDateString()}
+                  </Typography>
                 </Box>
-              </TableCell>
-              <TableCell>
-                <Chip 
-                  label={followup.activity_type}
-                  color={getActivityTypeColor(followup.activity_type)}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" sx={{ 
-                  maxWidth: 300,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {followup.description}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                {followup.meeting_date ? (
-                  <Typography variant="body2">
-                    {new Date(followup.meeting_date).toLocaleDateString()}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    -
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell>
-                {followup.follow_up_date ? (
-                  <Typography variant="body2">
-                    {new Date(followup.follow_up_date).toLocaleDateString()}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    -
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {followup.documents_collected.map((doc, index) => (
-                    <Chip
-                      key={index}
-                      label={doc}
+              </Box>
+
+              {/* Followup Info Section */}
+              <Box sx={{ flex: 1 }}>
+                <Stack spacing={2}>
+                  {/* Activity Type */}
+                  <Box>
+                    <Chip 
+                      label={followup.activity_type}
+                      color={getActivityTypeColor(followup.activity_type)}
                       size="small"
-                      color="success"
-                      icon={<CheckCircleIcon />}
+                      sx={{ mb: 1 }}
                     />
-                  ))}
-                  {followup.documents_pending.map((doc, index) => (
-                    <Chip
-                      key={index}
-                      label={doc}
-                      size="small"
-                      color="warning"
-                      icon={<PendingIcon />}
-                    />
-                  ))}
+                  </Box>
+
+                  {/* Description */}
+                  <Box>
+                    <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                      {followup.description}
+                    </Typography>
+                  </Box>
+
+                  {/* Meeting Details */}
+                  {followup.meeting_date && (
+                    <Box>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Meeting Details
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Typography variant="body2">
+                          Date: {new Date(followup.meeting_date).toLocaleDateString()}
+                        </Typography>
+                        {followup.meeting_duration && (
+                          <Typography variant="body2">
+                            Duration: {followup.meeting_duration}
+                          </Typography>
+                        )}
+                        {followup.meeting_notes && (
+                          <Typography variant="body2">
+                            Notes: {followup.meeting_notes}
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Follow-up Details */}
+                  {followup.follow_up_date && (
+                    <Box>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Follow-up Details
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Typography variant="body2">
+                          Date: {new Date(followup.follow_up_date).toLocaleDateString()}
+                        </Typography>
+                        {followup.follow_up_notes && (
+                          <Typography variant="body2">
+                            Notes: {followup.follow_up_notes}
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Document Status */}
+                  {(followup.documents_collected?.length > 0 || followup.documents_pending?.length > 0) && (
+                    <Box>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Document Status
+                      </Typography>
+                      <Stack spacing={1}>
+                        {followup.documents_collected?.length > 0 && (
+                          <Box>
+                            <Typography variant="body2" color="success.main">
+                              Collected:
+                            </Typography>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              {followup.documents_collected.map((doc, index) => (
+                                <Chip
+                                  key={index}
+                                  label={doc}
+                                  size="small"
+                                  color="success"
+                                  icon={<CheckCircleIcon />}
+                                />
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
+                        {followup.documents_pending?.length > 0 && (
+                          <Box>
+                            <Typography variant="body2" color="warning.main">
+                              Pending:
+                            </Typography>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              {followup.documents_pending.map((doc, index) => (
+                                <Chip
+                                  key={index}
+                                  label={doc}
+                                  size="small"
+                                  color="warning"
+                                  icon={<PendingIcon />}
+                                />
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
                 </Stack>
-              </TableCell>
-              <TableCell align="right">
-                <Stack direction="row" spacing={1} justifyContent="flex-end">
-                  <Tooltip title="Edit">
-                    <IconButton 
-                      size="small"
-                      onClick={() => handleEdit(followup)}
-                      sx={{
-                        '&:hover': {
-                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                        }
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton 
-                      size="small"
-                      onClick={() => handleDelete(followup)}
-                      sx={{ 
-                        color: theme.palette.error.main,
-                        '&:hover': {
-                          backgroundColor: alpha(theme.palette.error.main, 0.1),
-                        }
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </TableCell>
+              </Box>
+
+              {/* Actions Section */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 1,
+                pt: 2,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+              }}>
+                <Tooltip title="Edit">
+                  <IconButton 
+                    size="small"
+                    onClick={() => handleEdit(followup)}
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton 
+                    size="small"
+                    onClick={() => handleDelete(followup)}
+                    sx={{ 
+                      color: theme.palette.error.main,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.error.main, 0.1),
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </FollowupCard>
+          </Grid>
+        ))}
+      </Grid>
+    );
+  };
+
+  const renderTableView = (followups: Followup[]) => {
+    if (followups.length === 0) {
+      return (
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '200px',
+          p: 4,
+          borderRadius: '16px',
+          backgroundColor: alpha(theme.palette.background.paper, 0.6),
+          border: `1px dashed ${alpha(theme.palette.divider, 0.3)}`,
+        }}>
+          <DescriptionIcon sx={{ 
+            fontSize: 64, 
+            color: alpha(theme.palette.text.secondary, 0.5),
+            mb: 2
+          }} />
+          <Typography variant="h6" sx={{ color: theme.palette.text.secondary }}>
+            No followups found
+          </Typography>
+          <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
+            Click the New Followup button to create your first followup
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <TableContainer component={Paper} sx={{ 
+        borderRadius: '16px',
+        background: alpha(theme.palette.background.paper, 0.95),
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+      }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Lead</TableCell>
+              <TableCell>Activity Type</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Meeting Date</TableCell>
+              <TableCell>Follow-up Date</TableCell>
+              <TableCell>Documents</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+          </TableHead>
+          <TableBody>
+            {followups.map((followup) => (
+              <TableRow key={followup.id}>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      borderRadius: '50%', 
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Typography sx={{ 
+                        color: theme.palette.primary.main,
+                        fontWeight: 'bold',
+                        fontSize: '0.875rem'
+                      }}>
+                        {followup.leads?.first_name?.[0]}{followup.leads?.last_name?.[0]}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {followup.leads ? 
+                        `${followup.leads.first_name} ${followup.leads.last_name}` : 
+                        'Unknown Lead'}
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={followup.activity_type}
+                    color={getActivityTypeColor(followup.activity_type)}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" sx={{ 
+                    maxWidth: 300,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {followup.description}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  {followup.meeting_date ? (
+                    <Typography variant="body2">
+                      {new Date(followup.meeting_date).toLocaleDateString()}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {followup.follow_up_date ? (
+                    <Typography variant="body2">
+                      {new Date(followup.follow_up_date).toLocaleDateString()}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {followup.documents_collected?.map((doc, index) => (
+                      <Chip
+                        key={index}
+                        label={doc}
+                        size="small"
+                        color="success"
+                        icon={<CheckCircleIcon />}
+                      />
+                    ))}
+                    {followup.documents_pending?.map((doc, index) => (
+                      <Chip
+                        key={index}
+                        label={doc}
+                        size="small"
+                        color="warning"
+                        icon={<PendingIcon />}
+                      />
+                    ))}
+                  </Stack>
+                </TableCell>
+                <TableCell align="right">
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Tooltip title="Edit">
+                      <IconButton 
+                        size="small"
+                        onClick={() => handleEdit(followup)}
+                        sx={{
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                          }
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton 
+                        size="small"
+                        onClick={() => handleDelete(followup)}
+                        sx={{ 
+                          color: theme.palette.error.main,
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.error.main, 0.1),
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
 
   return (
     <Layout>
@@ -700,6 +780,58 @@ const Followups: React.FC = () => {
           </Box>
         </Box>
 
+        {/* Search and Filter Section */}
+        <Box 
+          sx={{ 
+            mb: 3, 
+            display: 'flex', 
+            gap: 2, 
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1200,
+          }}
+        >
+          <TextField
+            fullWidth
+            placeholder="Search followups..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{
+              maxWidth: 400,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '8px',
+                backgroundColor: alpha(theme.palette.background.paper, 0.6),
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: theme.palette.text.secondary }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Filter by Type</InputLabel>
+            <Select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              label="Filter by Type"
+              startAdornment={
+                <InputAdornment position="start">
+                  <FilterIcon sx={{ color: theme.palette.text.secondary }} />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="all">All Types</MenuItem>
+              <MenuItem value="meeting">Meeting</MenuItem>
+              <MenuItem value="call">Call</MenuItem>
+              <MenuItem value="email">Email</MenuItem>
+              <MenuItem value="document">Document</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
         {/* Content */}
         <Box 
           component="section"
@@ -728,32 +860,8 @@ const Followups: React.FC = () => {
             }}>
               <CircularProgress />
             </Box>
-          ) : followups.length === 0 ? (
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '200px',
-              p: 4,
-              borderRadius: '16px',
-              backgroundColor: alpha(theme.palette.background.paper, 0.6),
-              border: `1px dashed ${alpha(theme.palette.divider, 0.3)}`,
-            }}>
-              <DescriptionIcon sx={{ 
-                fontSize: 64, 
-                color: alpha(theme.palette.text.secondary, 0.5),
-                mb: 2
-              }} />
-              <Typography variant="h6" sx={{ color: theme.palette.text.secondary }}>
-                No followups found
-              </Typography>
-              <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
-                Click the New Followup button to create your first followup
-              </Typography>
-            </Box>
           ) : (
-            viewMode === 'card' ? renderCardView() : renderTableView()
+            viewMode === 'card' ? renderCardView(filteredFollowups) : renderTableView(filteredFollowups)
           )}
         </Box>
 

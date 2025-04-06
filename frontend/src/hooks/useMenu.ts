@@ -19,6 +19,7 @@ const iconMap: { [key: string]: React.ComponentType } = {
   Analytics: Icons.Analytics,
   Help: Icons.Help,
   Info: Icons.Info,
+  Transfer: Icons.TransferWithinAStation,
   // Add more icon mappings as needed
 };
 
@@ -65,8 +66,22 @@ export const useMenu = () => {
         };
       });
 
+      // Add Lead Transfer menu item
+      const leadTransferItem: MenuItemWithIcon = {
+        id: 'lead-transfer',
+        title: 'Lead Transfer',
+        path: '/leads/transfer',
+        icon: React.createElement(Icons.TransferWithinAStation),
+        sort_order: 4,
+        parent_id: undefined,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        children: [],
+      };
+
       // Build and set the menu tree
-      const menuTree = buildMenuTree(transformedMenuItems);
+      const menuTree = buildMenuTree([...transformedMenuItems, leadTransferItem]);
       setMenuItems(menuTree);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch menu items');

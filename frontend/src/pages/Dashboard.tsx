@@ -86,9 +86,9 @@ const Dashboard: React.FC = () => {
       
       if (documentsError) throw documentsError;
 
-      // Fetch applications stats
+      // Fetch visa applications stats
       const { data: applicationsData, error: applicationsError } = await supabase
-        .from('applications')
+        .from('visa_applications')
         .select('*');
       
       if (applicationsError) throw applicationsError;
@@ -104,8 +104,10 @@ const Dashboard: React.FC = () => {
       // Calculate unverified documents
       const unverifiedDocuments = documentsData.filter(doc => !doc.is_verified).length;
 
-      // Calculate pending applications
-      const pendingApplications = applicationsData.filter(app => app.status === 'pending').length;
+      // Calculate pending applications (where application_status is 'draft' or 'submitted')
+      const pendingApplications = applicationsData.filter(app => 
+        ['draft', 'submitted'].includes(app.application_status)
+      ).length;
 
       setStats({
         totalLeads: leadsData.length,
