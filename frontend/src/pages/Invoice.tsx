@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -42,7 +42,128 @@ import { useTheme, alpha } from '@mui/material/styles';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import InvoiceFormat from '../components/InvoiceFormat';
 
-interface InvoiceProps {}
+// Create a singleton ResizeObserver instance
+let globalResizeObserver: ResizeObserver | null = null;
+const observedElements = new Map<Element, (entry: ResizeObserverEntry) => void>();
+
+// Global error handler
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (e: ErrorEvent) => {
+    const errorMessage = e?.message || '';
+    if (errorMessage.includes && (
+      errorMessage.includes('ResizeObserver loop') || 
+      errorMessage.includes('ResizeObserver completed')
+    )) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
+    const errorMessage = e?.reason?.message || '';
+    if (errorMessage.includes && (
+      errorMessage.includes('ResizeObserver loop') || 
+      errorMessage.includes('ResizeObserver completed')
+    )) {
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+}
+
+// Simplified ResizeObserver hook with singleton pattern
+const useResizeObserver = () => {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const elementRef = useRef<Element | null>(null);
+  const callbackRef = useRef<((entry: ResizeObserverEntry) => void) | null>(null);
+
+  useEffect(() => {
+    // Initialize the global observer if needed
+    if (!globalResizeObserver) {
+      try {
+        globalResizeObserver = new ResizeObserver((entries) => {
+          entries.forEach((entry) => {
+            const callback = observedElements.get(entry.target);
+            if (callback) {
+              window.requestAnimationFrame(() => {
+                try {
+                  callback(entry);
+                } catch (error) {
+                  // Silent fail for callback errors
+                }
+              });
+            }
+          });
+        });
+      } catch (error) {
+        // Silent fail for initialization
+        return;
+      }
+    }
+
+    return () => {
+      if (elementRef.current && globalResizeObserver) {
+        try {
+          globalResizeObserver.unobserve(elementRef.current);
+          observedElements.delete(elementRef.current);
+        } catch (error) {
+          // Silent fail for cleanup
+        }
+      }
+    };
+  }, []);
+
+  const observe = useCallback((element: HTMLElement | null) => {
+    if (!element || !globalResizeObserver) return;
+
+    try {
+      // Cleanup previous observation
+      if (elementRef.current && globalResizeObserver) {
+        globalResizeObserver.unobserve(elementRef.current);
+        observedElements.delete(elementRef.current);
+      }
+
+      // Create new callback
+      const callback = (entry: ResizeObserverEntry) => {
+        if (entry.contentRect) {
+          setSize({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height
+          });
+        }
+      };
+
+      // Store refs
+      elementRef.current = element;
+      callbackRef.current = callback;
+      observedElements.set(element, callback);
+
+      // Start observation
+      globalResizeObserver.observe(element);
+    } catch (error) {
+      // Silent fail for observation errors
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (elementRef.current && globalResizeObserver) {
+        try {
+          globalResizeObserver.unobserve(elementRef.current);
+          observedElements.delete(elementRef.current);
+        } catch (error) {
+          // Silent fail for cleanup
+        }
+      }
+    };
+  }, []);
+
+  return { observe, size };
+};
+
+// Rename the interface to avoid naming conflict with the component
+interface InvoicePageProps {}
 
 interface Lead {
   id: string;
@@ -53,7 +174,7 @@ interface Lead {
   status: string;
 }
 
-interface Invoice {
+interface InvoiceData {
   id: string;
   lead_id: string;
   amount: number;
@@ -71,22 +192,24 @@ interface Invoice {
 
 interface ExpandableRowProps {
   lead: Lead;
-  invoices: Invoice[];
+  invoices: InvoiceData[];
   onGenerateInvoice: (lead: Lead) => void;
-  onViewInvoice: (invoice: Invoice) => void;
-  onEditInvoice: (invoice: Invoice) => void;
+  onViewInvoice: (invoice: InvoiceData) => void;
+  onEditInvoice: (invoice: InvoiceData) => void;
 }
 
 const ExpandableRow: React.FC<ExpandableRowProps> = ({
   lead,
-  invoices,
+  invoices: rowInvoices,
   onGenerateInvoice,
   onViewInvoice,
   onEditInvoice,
 }) => {
   const [open, setOpen] = useState(false);
   const theme = useTheme();
-  const leadInvoices = invoices.filter(invoice => invoice.lead_id === lead.id);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const leadInvoices = rowInvoices.filter(invoice => invoice.lead_id === lead.id);
 
   // Add lead information to each invoice
   const enrichedInvoices = leadInvoices.map(invoice => ({
@@ -112,33 +235,25 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
     }
   };
 
-  const handleView = (e: React.MouseEvent, invoice: Invoice) => {
+  const handleView = (e: React.MouseEvent, invoice: InvoiceData) => {
     e.stopPropagation();
     onViewInvoice(invoice);
   };
 
-  const handleEdit = (e: React.MouseEvent, invoice: Invoice) => {
+  const handleEdit = (e: React.MouseEvent, invoice: InvoiceData) => {
     e.stopPropagation();
     onEditInvoice(invoice);
   };
 
   return (
     <>
-      <TableRow 
-        sx={{
-          '&:hover': {
-            backgroundColor: alpha(theme.palette.action.hover, 0.04),
-          },
-        }}
-      >
+      <TableRow>
         <TableCell>
           <IconButton
             aria-label="expand row"
             size="small"
             onClick={() => setOpen(!open)}
-          >
-            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-          </IconButton>
+          >{open ? <KeyboardArrowUpIcon/> : <KeyboardArrowDownIcon/>}</IconButton>
         </TableCell>
         <TableCell>{`${lead.first_name} ${lead.last_name}`}</TableCell>
         <TableCell>{lead.email}</TableCell>
@@ -159,9 +274,7 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                     backgroundColor: alpha(theme.palette.primary.main, 0.1),
                   },
                 }}
-              >
-                <ReceiptIcon fontSize="small" />
-              </IconButton>
+              ><ReceiptIcon fontSize="small"/></IconButton>
             </Tooltip>
           </Box>
         </TableCell>
@@ -169,10 +282,8 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1 }}>
-              <Typography variant="h6" gutterBottom component="div">
-                Invoice History
-              </Typography>
+            <Box sx={{ margin: 1 }} ref={tableRef}>
+              <Typography variant="h6" gutterBottom component="div">Invoice History</Typography>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -188,9 +299,7 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                 <TableBody>
                   {enrichedInvoices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        No invoices found for this lead
-                      </TableCell>
+                      <TableCell colSpan={7} align="center">No invoices found for this lead</TableCell>
                     </TableRow>
                   ) : (
                     enrichedInvoices.map((invoice) => (
@@ -217,9 +326,7 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
                               },
                             }}
-                          >
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
+                          ><ViewIcon fontSize="small"/></IconButton>
                           <IconButton
                             size="small"
                             onClick={(e) => handleEdit(e, invoice)}
@@ -229,9 +336,7 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
                               },
                             }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+                          ><EditIcon fontSize="small"/></IconButton>
                         </TableCell>
                       </TableRow>
                     ))
@@ -246,7 +351,7 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
   );
 };
 
-const Invoice: React.FC<InvoiceProps> = () => {
+const InvoicePage: React.FC<InvoicePageProps> = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { id: invoiceId } = useParams();
@@ -254,9 +359,9 @@ const Invoice: React.FC<InvoiceProps> = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null);
+  const [currentInvoice, setCurrentInvoice] = useState<InvoiceData | null>(null);
   const [amount, setAmount] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -265,6 +370,18 @@ const Invoice: React.FC<InvoiceProps> = () => {
   const [showInvoiceFormat, setShowInvoiceFormat] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const mainTableRef = useRef<HTMLDivElement>(null);
+  const { observe } = useResizeObserver();
+
+  useEffect(() => {
+    const table = mainTableRef.current;
+    if (table) {
+      observe(table);
+    }
+    return () => {
+      // Cleanup will be handled by the hook
+    };
+  }, [observe]);
 
   useEffect(() => {
     if (invoiceId) {
@@ -387,11 +504,11 @@ const Invoice: React.FC<InvoiceProps> = () => {
     setIsDialogOpen(true);
   };
 
-  const handleViewInvoice = (invoice: Invoice) => {
+  const handleViewInvoice = (invoice: InvoiceData) => {
     navigate(`/invoices/${invoice.id}`);
   };
 
-  const handleEditInvoice = (invoice: Invoice) => {
+  const handleEditInvoice = (invoice: InvoiceData) => {
     navigate(`/invoices/${invoice.id}/edit`);
   };
 
@@ -496,32 +613,45 @@ const Invoice: React.FC<InvoiceProps> = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper} sx={{ position: 'relative', zIndex: 1 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell style={{ width: 50 }} /> {/* Expansion column */}
-                  <TableCell>Lead Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredLeads.map((lead) => (
-                  <ExpandableRow
-                    key={lead.id}
-                    lead={lead}
-                    invoices={invoices}
-                    onGenerateInvoice={handleInvoiceClick}
-                    onViewInvoice={handleViewInvoice}
-                    onEditInvoice={handleEditInvoice}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box ref={mainTableRef}>
+            <TableContainer 
+              component={Paper} 
+              sx={{ 
+                position: 'relative', 
+                zIndex: 1,
+                overflow: 'auto',
+                '& table': {
+                  tableLayout: 'fixed',
+                  width: '100%'
+                }
+              }}
+            >
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell style={{ width: 50 }}/>
+                    <TableCell>Lead Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredLeads.map((lead) => (
+                    <ExpandableRow
+                      key={lead.id}
+                      lead={lead}
+                      invoices={invoices}
+                      onGenerateInvoice={handleInvoiceClick}
+                      onViewInvoice={handleViewInvoice}
+                      onEditInvoice={handleEditInvoice}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
         )}
 
         {/* Invoice Generation Dialog */}
@@ -595,4 +725,4 @@ const Invoice: React.FC<InvoiceProps> = () => {
   );
 };
 
-export default Invoice; 
+export default InvoicePage; 

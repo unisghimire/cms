@@ -31,6 +31,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   InputAdornment,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -86,12 +88,22 @@ interface Followup {
     first_name: string;
     last_name: string;
   };
+  follow_up_channel?: string;
+  outcome_status?: string;
+  reminder_time?: string;
+  reminder_before?: number;
+  assigned_to?: string;
+  internal_notes?: string;
+  notify_lead?: boolean;
+  notification_message?: string;
+  follow_up_result?: string;
 }
 
 const Followups: React.FC = () => {
   const theme = useTheme();
   const { leads } = useLeads();
   const [followups, setFollowups] = useState<Followup[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; email: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,10 +122,20 @@ const Followups: React.FC = () => {
     follow_up_notes: '',
     documents_collected: [] as string[],
     documents_pending: [] as string[],
+    follow_up_channel: '',
+    outcome_status: '',
+    reminder_time: '',
+    reminder_before: 30,
+    assigned_to: '',
+    internal_notes: '',
+    notify_lead: false,
+    notification_message: '',
+    follow_up_result: ''
   });
 
   useEffect(() => {
     fetchFollowups();
+    fetchUsers();
   }, []);
 
   const fetchFollowups = async () => {
@@ -141,8 +163,19 @@ const Followups: React.FC = () => {
     }
   };
 
-  const handleCreate = () => {
-    setSelectedFollowup(null);
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_users');
+      
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.message);
+    }
+  };
+
+  const resetFormData = () => {
     setFormData({
       lead_id: '',
       activity_type: '',
@@ -154,8 +187,27 @@ const Followups: React.FC = () => {
       follow_up_notes: '',
       documents_collected: [],
       documents_pending: [],
+      follow_up_channel: '',
+      outcome_status: '',
+      reminder_time: '',
+      reminder_before: 30,
+      assigned_to: '',
+      internal_notes: '',
+      notify_lead: false,
+      notification_message: '',
+      follow_up_result: ''
     });
+  };
+
+  const handleCreate = () => {
+    setSelectedFollowup(null);
+    resetFormData();
     setIsDialogOpen(true);
+  };
+
+  const formatDateForInput = (dateString: string | null) => {
+    if (!dateString) return '';
+    return new Date(dateString).toISOString().split('T')[0];
   };
 
   const handleEdit = (followup: Followup) => {
@@ -164,13 +216,22 @@ const Followups: React.FC = () => {
       lead_id: followup.lead_id,
       activity_type: followup.activity_type,
       description: followup.description,
-      meeting_date: followup.meeting_date || '',
+      meeting_date: formatDateForInput(followup.meeting_date),
       meeting_duration: followup.meeting_duration || '',
       meeting_notes: followup.meeting_notes || '',
-      follow_up_date: followup.follow_up_date || '',
+      follow_up_date: formatDateForInput(followup.follow_up_date),
       follow_up_notes: followup.follow_up_notes || '',
       documents_collected: followup.documents_collected || [],
       documents_pending: followup.documents_pending || [],
+      follow_up_channel: followup.follow_up_channel || '',
+      outcome_status: followup.outcome_status || '',
+      reminder_time: followup.reminder_time || '',
+      reminder_before: followup.reminder_before || 30,
+      assigned_to: followup.assigned_to || '',
+      internal_notes: followup.internal_notes || '',
+      notify_lead: followup.notify_lead || false,
+      notification_message: followup.notification_message || '',
+      follow_up_result: followup.follow_up_result || '',
     });
     setIsDialogOpen(true);
   };
@@ -198,26 +259,53 @@ const Followups: React.FC = () => {
       }
 
       const followupData = {
-        ...formData,
-        performed_by: user.id,
-        meeting_date: formData.meeting_date || null,
+        lead_id: formData.lead_id,
+        activity_type: formData.activity_type,
+        description: formData.description,
+        meeting_date: formData.meeting_date ? new Date(formData.meeting_date).toISOString() : null,
         meeting_duration: formData.meeting_duration || null,
-        follow_up_date: formData.follow_up_date || null,
+        meeting_notes: formData.meeting_notes || null,
+        follow_up_date: formData.follow_up_date ? new Date(formData.follow_up_date).toISOString() : null,
+        follow_up_notes: formData.follow_up_notes || null,
+        documents_collected: formData.documents_collected,
+        documents_pending: formData.documents_pending,
+        performed_by: user.id,
+        follow_up_channel: formData.follow_up_channel,
+        outcome_status: formData.outcome_status,
+        reminder_time: formData.reminder_time,
+        reminder_before: formData.reminder_before,
+        assigned_to: formData.assigned_to,
+        internal_notes: formData.internal_notes,
+        notify_lead: formData.notify_lead,
+        notification_message: formData.notification_message,
+        follow_up_result: formData.follow_up_result
       };
 
+      console.log('Saving followup data:', followupData);
+
       if (selectedFollowup) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('lead_activities')
           .update(followupData)
-          .eq('id', selectedFollowup.id);
+          .eq('id', selectedFollowup.id)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating followup:', error);
+          throw error;
+        }
+        console.log('Updated followup:', data);
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('lead_activities')
-          .insert([followupData]);
+          .insert([followupData])
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting followup:', error);
+          throw error;
+        }
+        console.log('Inserted followup:', data);
       }
 
       setIsDialogOpen(false);
@@ -882,57 +970,80 @@ const Followups: React.FC = () => {
             {selectedFollowup ? 'Edit Followup' : 'New Followup'}
           </DialogTitle>
           <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                {/* Lead Selection */}
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Select Lead</InputLabel>
-                    <Select
-                      value={formData.lead_id}
-                      onChange={(e) => setFormData({ ...formData, lead_id: e.target.value })}
-                      label="Select Lead"
-                    >
-                      {leads.map((lead) => (
-                        <MenuItem key={lead.id} value={lead.id}>
-                          {lead.first_name} {lead.last_name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+            <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Existing fields */}
+              <FormControl fullWidth>
+                <InputLabel>Lead</InputLabel>
+                <Select
+                  value={formData.lead_id}
+                  onChange={(e) => setFormData({ ...formData, lead_id: e.target.value })}
+                  label="Lead"
+                >
+                  {leads.map((lead) => (
+                    <MenuItem key={lead.id} value={lead.id}>
+                      {`${lead.first_name} ${lead.last_name}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-                {/* Activity Type */}
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Activity Type</InputLabel>
-                    <Select
-                      value={formData.activity_type}
-                      onChange={(e) => setFormData({ ...formData, activity_type: e.target.value })}
-                      label="Activity Type"
-                    >
-                      <MenuItem value="meeting">Meeting</MenuItem>
-                      <MenuItem value="call">Call</MenuItem>
-                      <MenuItem value="email">Email</MenuItem>
-                      <MenuItem value="document">Document</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
+              <FormControl fullWidth required>
+                <InputLabel>Activity Type</InputLabel>
+                <Select
+                  value={formData.activity_type}
+                  onChange={(e) => setFormData({ ...formData, activity_type: e.target.value })}
+                  label="Activity Type"
+                >
+                  <MenuItem value="meeting">Meeting</MenuItem>
+                  <MenuItem value="call">Call</MenuItem>
+                  <MenuItem value="email">Email</MenuItem>
+                  <MenuItem value="document">Document</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
 
-                {/* Description */}
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    multiline
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </Grid>
+              <FormControl fullWidth>
+                <InputLabel>Follow-up Channel</InputLabel>
+                <Select
+                  value={formData.follow_up_channel}
+                  onChange={(e) => setFormData({ ...formData, follow_up_channel: e.target.value })}
+                  label="Follow-up Channel"
+                >
+                  <MenuItem value="phone">Phone</MenuItem>
+                  <MenuItem value="whatsapp">WhatsApp</MenuItem>
+                  <MenuItem value="email">Email</MenuItem>
+                  <MenuItem value="in-person">In-person</MenuItem>
+                  <MenuItem value="zoom">Zoom</MenuItem>
+                </Select>
+              </FormControl>
 
-                {/* Meeting Details */}
-                <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Outcome/Status</InputLabel>
+                <Select
+                  value={formData.outcome_status}
+                  onChange={(e) => setFormData({ ...formData, outcome_status: e.target.value })}
+                  label="Outcome/Status"
+                >
+                  <MenuItem value="successful">Successful</MenuItem>
+                  <MenuItem value="rescheduled">Rescheduled</MenuItem>
+                  <MenuItem value="no_response">No Response</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth
+                label="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                multiline
+                rows={2}
+              />
+
+              {/* Meeting Details */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle2">Meeting Details</Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
                   <TextField
                     fullWidth
                     label="Meeting Date"
@@ -940,87 +1051,149 @@ const Followups: React.FC = () => {
                     value={formData.meeting_date}
                     onChange={(e) => setFormData({ ...formData, meeting_date: e.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    inputProps={{
+                      max: '2100-12-31',
+                      min: '2000-01-01'
+                    }}
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Meeting Duration"
+                    placeholder="e.g., 1 hour"
                     value={formData.meeting_duration}
                     onChange={(e) => setFormData({ ...formData, meeting_duration: e.target.value })}
-                    placeholder="e.g., 1 hour"
                   />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Meeting Notes"
-                    multiline
-                    rows={3}
-                    value={formData.meeting_notes}
-                    onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
-                  />
-                </Grid>
+                </Box>
+                <TextField
+                  fullWidth
+                  label="Meeting Notes"
+                  value={formData.meeting_notes}
+                  onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
+                  multiline
+                  rows={2}
+                />
+              </Box>
 
-                {/* Follow-up Details */}
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Follow-up Date"
-                    type="date"
-                    value={formData.follow_up_date}
-                    onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Follow-up Notes"
-                    multiline
-                    rows={3}
-                    value={formData.follow_up_notes}
-                    onChange={(e) => setFormData({ ...formData, follow_up_notes: e.target.value })}
-                  />
-                </Grid>
+              {/* Follow-up Details */}
+              <Typography variant="subtitle2">Follow-up Details</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Follow-up Date"
+                  type="date"
+                  value={formData.follow_up_date}
+                  onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{
+                    max: '2100-12-31',
+                    min: '2000-01-01'
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  label="Follow-up Time"
+                  type="time"
+                  value={formData.reminder_time}
+                  onChange={(e) => setFormData({ ...formData, reminder_time: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
 
-                {/* Document Status */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Document Status
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Documents Collected"
-                        multiline
-                        rows={3}
-                        value={formData.documents_collected.join(', ')}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          documents_collected: e.target.value.split(',').map(doc => doc.trim()).filter(Boolean)
-                        })}
-                        placeholder="Comma-separated list"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Documents Pending"
-                        multiline
-                        rows={3}
-                        value={formData.documents_pending.join(', ')}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          documents_pending: e.target.value.split(',').map(doc => doc.trim()).filter(Boolean)
-                        })}
-                        placeholder="Comma-separated list"
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(formData.reminder_before)}
+                      onChange={(e) => setFormData({ ...formData, reminder_before: e.target.checked ? 30 : 0 })}
+                    />
+                  }
+                  label="Set Reminder"
+                />
+                {formData.reminder_before > 0 && (
+                  <TextField
+                    label="Minutes Before"
+                    type="number"
+                    value={formData.reminder_before}
+                    onChange={(e) => setFormData({ ...formData, reminder_before: parseInt(e.target.value) })}
+                    InputProps={{ inputProps: { min: 5, max: 120 } }}
+                    size="small"
+                  />
+                )}
+              </Box>
+
+              <FormControl fullWidth>
+                <InputLabel>Assigned Staff/Consultant</InputLabel>
+                <Select
+                  value={formData.assigned_to}
+                  onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                  label="Assigned Staff/Consultant"
+                >
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth
+                label="Internal Note (not visible to client)"
+                value={formData.internal_notes}
+                onChange={(e) => setFormData({ ...formData, internal_notes: e.target.value })}
+                multiline
+                rows={2}
+              />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.notify_lead}
+                    onChange={(e) => setFormData({ ...formData, notify_lead: e.target.checked })}
+                  />
+                }
+                label="Notify Lead via Email/SMS"
+              />
+
+              {formData.notify_lead && (
+                <TextField
+                  fullWidth
+                  label="Notification Message"
+                  value={formData.notification_message}
+                  onChange={(e) => setFormData({ ...formData, notification_message: e.target.value })}
+                  multiline
+                  rows={2}
+                />
+              )}
+
+              <FormControl fullWidth>
+                <InputLabel>Follow-up Result</InputLabel>
+                <Select
+                  value={formData.follow_up_result}
+                  onChange={(e) => setFormData({ ...formData, follow_up_result: e.target.value })}
+                  label="Follow-up Result"
+                >
+                  <MenuItem value="interested">Interested</MenuItem>
+                  <MenuItem value="needs_time">Needs Time</MenuItem>
+                  <MenuItem value="not_eligible">Not Eligible</MenuItem>
+                  <MenuItem value="not_interested">Not Interested</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* File upload section */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Upload Documents
+                </Typography>
+                <input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    // Handle file upload logic here
+                  }}
+                />
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>

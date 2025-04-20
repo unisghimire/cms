@@ -10,6 +10,7 @@ import Applications from './pages/Applications';
 import Followups from './pages/Followups';
 import LeadTransfer from './pages/LeadTransfer';
 import Invoice from './pages/Invoice';
+import Leads365 from './pages/Leads365';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import InvoiceFormat from './components/InvoiceFormat';
 
@@ -165,6 +166,14 @@ const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Invoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads365"
+              element={
+                <ProtectedRoute>
+                  <Leads365 />
                 </ProtectedRoute>
               }
             />
