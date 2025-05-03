@@ -13,6 +13,7 @@ import Invoice from './pages/Invoice';
 import Leads365 from './pages/Leads365';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import InvoiceFormat from './components/InvoiceFormat';
+import Landing from './pages/Landing';
 
 const theme = createTheme({
   palette: {
@@ -65,6 +66,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
+const HomeRoute: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Dashboard /> : <Landing />;
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
@@ -73,14 +79,7 @@ const App: React.FC = () => {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<HomeRoute />} />
             <Route
               path="/dashboard"
               element={
