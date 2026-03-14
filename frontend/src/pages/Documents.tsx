@@ -51,6 +51,7 @@ const DocumentCard = styled(Paper)(({ theme }) => ({
   background: alpha(theme.palette.background.paper, 0.95),
   borderRadius: '16px',
   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  boxShadow: theme.shadows[2],
   transition: 'all 0.3s ease-in-out',
   height: '100%',
   display: 'flex',
