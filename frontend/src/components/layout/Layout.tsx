@@ -109,9 +109,10 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
   '& .MuiDrawer-paper': {
     width: drawerWidth,
     boxSizing: 'border-box',
+    borderRadius: 0,
+    borderRight: '1px solid rgba(255, 255, 255, 0.12)',
     background: 'rgba(0, 0, 0, 0.2)',
     backdropFilter: 'blur(10px)',
-    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
     '&::before': {
       content: '""',
       position: 'absolute',
@@ -127,7 +128,7 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
 
 const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
   margin: theme.spacing(0.5, 1),
-  borderRadius: theme.spacing(1),
+  borderRadius: theme.spacing(1.5),
   transition: theme.transitions.create(['background-color', 'transform'], {
     duration: theme.transitions.duration.shorter,
   }),
