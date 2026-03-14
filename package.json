@@ -12,13 +12,27 @@
   },
   "keywords": [
     "consultancy",
+    "crm",
     "management",
-    "system",
     "react",
-    "nodejs"
+    "typescript",
+    "supabase",
+    "nodejs",
+    "express",
+    "visa",
+    "leads",
+    "invoices"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/CMS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/CMS/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/CMS#readme",
   "devDependencies": {
     "concurrently": "^8.2.2"
   }

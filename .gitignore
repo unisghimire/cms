@@ -18,7 +18,10 @@
 
 # Misc
 .DS_Store
+
+# Environment and secrets (never commit)
 .env
+**/.env
 .env.local
 .env.development.local
 .env.test.local
@@ -51,9 +54,13 @@ yarn-error.log*
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
+# dotenv and credentials (keep repo safe for public)
 .env
+**/.env
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local 
+.env.local
+supabase/SAMPLE_USER_CREDENTIALS.txt
+*.pem
+*.key
