@@ -10,7 +10,7 @@ A full-stack **Consultancy Management System** for managing leads, visa applicat
 
 ---
 
-## ✨ Features
+## ✨ Features :
 
 - **Leads** – Capture, track, and assign leads with status, source, and visa details  
 - **Visa applications** – Manage applications with status, fees, and dates  
