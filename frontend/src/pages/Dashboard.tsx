@@ -142,12 +142,15 @@ const Dashboard: React.FC = () => {
     <Card 
       sx={{ 
         height: '100%',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.3s ease-in-out',
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: theme.shadows[8],
-          borderColor: alpha(color, 0.3),
+          borderColor: alpha(color, 0.5),
         },
       }}
       onClick={onClick}
