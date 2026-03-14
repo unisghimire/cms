@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- README: add link to CHANGELOG in project structure section
+
 ## [1.0.0] - 2025-03-14
 
 ### Added
