@@ -139,7 +139,7 @@ const features = [
   {
     icon: <People fontSize="large" color="primary" />, 
     title: 'Lead Management',
-    description: 'Capture, organize, and nurture all your consultancy leads in one place.'
+    description: 'Capture, track, and assign leads with status, source, and full visibility.'
   },
   {
     icon: <Assignment fontSize="large" color="primary" />, 
@@ -708,7 +708,7 @@ const Landing: React.FC = () => {
                     border: '2px solid #fff',
                     whiteSpace: 'nowrap',
                   }}>
-                    Trusted automation. Next-level results
+                    One platform. Smarter consultancy.
                   </Box>
                 </motion.div>
                 <motion.div variants={fadeUp} custom={0}>
@@ -758,7 +758,7 @@ const Landing: React.FC = () => {
                       maxWidth: 520,
                     }}
                   >
-                    Manage leads, applications, documents, follow-ups, and analytics—all in one powerful platform.
+                    Manage leads, visa applications, documents, follow-ups, and invoices—all in one place. Built for consultancies that scale.
                   </Typography>
                 </motion.div>
                 <motion.div variants={fadeUp} custom={2}>

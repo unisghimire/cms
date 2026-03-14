@@ -116,6 +116,7 @@ CMS/
 │   ├── schema.sql    # Full DB schema (tables, RLS, storage, seed)
 │   └── README.md     # Supabase setup guide
 ├── package.json      # Root scripts: install:all, start, build
+├── CHANGELOG.md      # Version history
 └── README.md
 ```
 
